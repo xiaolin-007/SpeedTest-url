@@ -13,10 +13,7 @@ async function handle(req) {
 
   if (path === '/') {
     return new Response(html(), {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store'
-      }
+      headers: { 'Content-Type': 'text/html; charset=utf-8' }
     })
   }
 
@@ -51,8 +48,7 @@ async function handle(req) {
     status: 200,
     headers: {
       'Content-Type': 'application/octet-stream',
-      'Cache-Control': 'no-store',
-      'Access-Control-Allow-Origin': '*'
+      'Cache-Control': 'no-store'
     }
   })
 }
@@ -67,8 +63,7 @@ return `<!doctype html>
 
 <style>
 html,body{
-  margin:0;
-  height:100%;
+  margin:0;height:100%;
   background:#fff;
   color:#000;
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
@@ -86,34 +81,26 @@ html,body{
   margin-bottom:70px;
 }
 .logo span{ color:#f48120; }
-
 .speed{
   font-size:140px;
   font-weight:700;
-  line-height:1;
 }
 .unit{
-  margin-top:10px;
   font-size:26px;
-  font-weight:900; /* 黑体感 */
-  letter-spacing:2px;
-  font-family:black, Arial Black, Impact, sans-serif;
+  font-weight:900;
+  font-family:Arial Black,Impact,sans-serif;
 }
-
 .progress{
   width:320px;
   height:4px;
   background:#eee;
   margin-top:28px;
-  overflow:hidden;
 }
 .bar{
   height:100%;
   width:0%;
   background:#f48120;
-  transition:width 120ms linear;
 }
-
 .buttons{
   position:absolute;
   bottom:70px;
@@ -128,8 +115,8 @@ button{
   font-weight:600;
   cursor:pointer;
 }
-.start{ background:#f48120; color:#fff }
-.stop{ background:#eee; color:#666 }
+.start{ background:#f48120;color:#fff }
+.stop{ background:#eee;color:#666 }
 button:disabled{ opacity:.4 }
 </style>
 </head>
@@ -137,86 +124,91 @@ button:disabled{ opacity:.4 }
 <body>
 <div class="main">
   <div class="logo">cloud<span>flare</span></div>
-
   <div id="speed" class="speed">0</div>
   <div class="unit">Mbps</div>
 
-  <div class="progress">
-    <div class="bar" id="bar"></div>
-  </div>
+  <div class="progress"><div id="bar" class="bar"></div></div>
 
   <div class="buttons">
-    <button class="start" id="start">开始</button>
-    <button class="stop" id="stop">停止</button>
+    <button id="start" class="start">开始</button>
+    <button id="stop" class="stop">停止</button>
   </div>
 </div>
 
 <script>
-let controller
-let running=false
+let controller = null
+let running = false
 
-const FILE_MB=${DEFAULT_MB}
-const TOTAL_BYTES=FILE_MB*1024*1024
+const MB = ${DEFAULT_MB}
+const TOTAL = MB * 1024 * 1024
 
-const speedEl=document.getElementById('speed')
-const barEl=document.getElementById('bar')
-const startBtn=document.getElementById('start')
-const stopBtn=document.getElementById('stop')
+const speedEl = document.getElementById('speed')
+const barEl = document.getElementById('bar')
+const startBtn = document.getElementById('start')
+const stopBtn = document.getElementById('stop')
 
-startBtn.onclick=()=>start()
-stopBtn.onclick=()=>controller && controller.abort()
+startBtn.onclick = start
+stopBtn.onclick = stop
 
-// 打开即自动测速
 start()
 
-async function start(){
-  if(running)return
-  running=true
-  speedEl.textContent='0'
-  barEl.style.width='0%'
-  controller=new AbortController()
-
-  const res=await fetch('/'+FILE_MB+'m',{signal:controller.signal})
-  const reader=res.body.getReader()
-
-  let recv=0
-  let lastTime=performance.now()
-  let windowBytes=0
-  let speeds=[]
-  let display=0
-
-  while(true){
-    const {value,done}=await reader.read()
-    if(done)break
-
-    recv+=value.length
-    windowBytes+=value.length
-
-    const now=performance.now()
-
-    // 500ms 统计一次真实速度
-    if(now-lastTime>500){
-      const dt=(now-lastTime)/1000
-      const mbps=windowBytes*8/1024/1024/dt
-      speeds.push(mbps)
-      if(speeds.length>8) speeds.shift()
-      windowBytes=0
-      lastTime=now
-    }
-
-    // UI 平滑更新
-    if(speeds.length){
-      const avg=speeds.reduce((a,b)=>a+b,0)/speeds.length
-      display+= (avg-display)*0.25
-      speedEl.textContent=display.toFixed(1)
-    }
-
-    // 进度条
-    const percent=Math.min(100,recv/TOTAL_BYTES*100)
-    barEl.style.width=percent+'%'
+function stop(){
+  if(controller){
+    controller.abort()
+    controller = null
   }
+}
 
-  running=false
+async function start(){
+  if(running) return
+  running = true
+
+  speedEl.textContent = '0'
+  barEl.style.width = '0%'
+
+  controller = new AbortController()
+
+  let recv = 0
+  let windowBytes = 0
+  let speeds = []
+  let lastStat = performance.now()
+  let display = 0
+
+  try{
+    const res = await fetch('/'+MB+'m',{ signal: controller.signal })
+    const reader = res.body.getReader()
+
+    while(true){
+      const {value,done} = await reader.read()
+      if(done) break
+
+      recv += value.length
+      windowBytes += value.length
+
+      const now = performance.now()
+
+      if(now-lastStat >= 500){
+        const mbps = windowBytes * 8 / 1024 / 1024 / ((now-lastStat)/1000)
+        speeds.push(mbps)
+        if(speeds.length > 8) speeds.shift()
+        windowBytes = 0
+        lastStat = now
+      }
+
+      if(speeds.length){
+        const avg = speeds.reduce((a,b)=>a+b,0)/speeds.length
+        display += (avg - display) * 0.25
+        speedEl.textContent = display.toFixed(1)
+      }
+
+      barEl.style.width = Math.min(100, recv/TOTAL*100) + '%'
+    }
+  } catch(e){
+    // Abort 属于正常情况，直接结束
+  } finally {
+    running = false
+    controller = null
+  }
 }
 </script>
 </body>
