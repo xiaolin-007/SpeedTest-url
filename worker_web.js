@@ -3,18 +3,16 @@ export default {
       const url = new URL(request.url);
       const path = url.pathname;
   
-      // 1. 路由逻辑：根目录返回前端网页
       if (path === "/" || path === "/index.html") {
         return new Response(htmlContent(), {
           headers: { "Content-Type": "text/html;charset=UTF-8" },
         });
       }
   
-      // 2. 后端逻辑：解析 /100m, /200m 等下载请求
       const match = path.match(/^\/(\d+)[mM]?$/);
       if (match) {
         const sizeInMB = parseInt(match[1]);
-        // 范围限制 10-1000MB (放宽下限以便测试)
+
         if (sizeInMB < 10 || sizeInMB > 1000) {
           return new Response("Range must be between 10MB and 1000MB", { status: 400 });
         }
@@ -61,9 +59,7 @@ export default {
     },
   };
   
-  // ----------------------------------------------------------------
-  // 前端 HTML 代码生成函数
-  // ----------------------------------------------------------------
+
   function htmlContent() {
     return `<!DOCTYPE html>
   <html lang="zh-CN">
@@ -109,7 +105,7 @@ export default {
           .speed-box { margin: 10px 0; }
           
           .speed-value {
-              font-size: 13rem; /* 再次加大测速字体 */
+              font-size: 13rem;
               font-weight: 800;
               line-height: 1;
               color: var(--cf-black);
@@ -209,18 +205,14 @@ export default {
   </div>
   
   <script>
-      // 配置
-      // 修改：将默认大小改为 100MB，以缩短测速时间
       const TEST_SIZE_MB = 100; 
       const TEST_URL = '/' + TEST_SIZE_MB + 'm';
       
-      // DOM 元素
       const speedDisplay = document.getElementById('speedDisplay');
       const statusText = document.getElementById('statusText');
       const actionBtn = document.getElementById('actionBtn');
       const progressFill = document.getElementById('progressFill');
   
-      // 图标
       const ICON_STOP = '<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>';
       const ICON_RESET = '<svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
       
@@ -276,7 +268,7 @@ export default {
                   }
                   loadedBytes += value.length;
                   updateSpeed(loadedBytes);
-                  // 进度条
+
                   const percent = Math.min((loadedBytes / contentLength) * 100, 100);
                   progressFill.style.width = percent + '%';
               }
